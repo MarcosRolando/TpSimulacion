@@ -3,7 +3,12 @@ import math as mt
 import os
 import time as tm
 
-#VER BUG DONDE ARRANCAMOS SIN NINGUN CONTAGIADO
+
+const_proporcion_contagiados = 0.03
+const_probabilidad_inicial_contagio = 0.65
+const_probabilidad_final_contagio = 0.15
+const_instantes_de_tiempo = 5000
+const_tamanio_matriz = 30
 
 class Persona:
 
@@ -19,27 +24,28 @@ class Persona:
         self._instantes_esperados = 0
         self._esta_enfermo = esta_enfermo
         self._estuvo_enfermo = False
-        self.turnos_enfermo = 0
-        self.se_contagio_este_turno = False
-        self.prob_moverse_derecha = rd.uniform(0.1, 0.9)
-        self.prob_moverse_arriba = rd.uniform(0.1, 0.9)
+        self._turnos_enfermo = 0
+        self._se_contagio_este_turno = False
+        self._prob_moverse_derecha = rd.uniform(0.25, 0.75)
+        self._prob_moverse_arriba = rd.uniform(0.25, 0.75)
 
     def puede_contagiar(self):
-        return self._esta_enfermo and (not self.se_contagio_este_turno)
+        return (self._esta_enfermo and (not self._se_contagio_este_turno))
 
     #Hace un update del estado de la persona e indica si se debe mover o no
     #Hace el chequeo de si se debe curar
     def intentar_moverse(self, min_turnos_enfermo_chance_sanar, probabilidad_de_cura):
-        self.se_contagio_este_turno = False
         self._instantes_esperados += 1
 
-        if self._esta_enfermo:
-            self.turnos_enfermo += 1
-            if (self.turnos_enfermo >= min_turnos_enfermo_chance_sanar) and \
-               (rd.uniform(0, 1) <= probabilidad_de_cura):
-                self.turnos_enfermo = 0
-                self.esta_enfermo = False
+        if (self._esta_enfermo and (not self._se_contagio_este_turno)):
+            self._turnos_enfermo += 1
 
+            if (self._turnos_enfermo >= min_turnos_enfermo_chance_sanar) and \
+               (rd.uniform(0, 1) <= probabilidad_de_cura):
+                self._turnos_enfermo = 0
+                self._esta_enfermo = False
+
+        self._se_contagio_este_turno = False
         if self._instantes_esperados == self._instantes_de_espera:
             self._instantes_esperados = 0
             return True
@@ -47,19 +53,20 @@ class Persona:
         return False
 
     def intentar_contagiar(self, probabilidad, hay_recontagio):
-        if (not self._estuvo_enfermo) or (hay_recontagio):
+        if ((not self._esta_enfermo) and ((not self._estuvo_enfermo) or (hay_recontagio))):
             if rd.uniform(0, 1) <= probabilidad:
                 self._esta_enfermo = True
                 self._estuvo_enfermo = True
-
+                self._turnos_enfermo = 0
+                self._se_contagio_este_turno = True
 
 
 #ver si agregamos parametros para generar poblacion random
 def generar_region():
     region = []
-    for i in range(30):
+    for i in range(const_tamanio_matriz):
         region.append([])
-        for j in range(30):
+        for j in range(const_tamanio_matriz):
             region[i].append(None)
     return region
 
@@ -98,8 +105,8 @@ def _generar_personas(region, cantidades, proporcion_contagiados, proporcion_cam
     caminantes_a_generar = int(cantidad_de_gente * proporcion_caminantes)
     contagiados_totales = int(cantidad_de_gente * proporcion_contagiados)
 
-    print("Caminantes a generar: " + str(caminantes_a_generar))
-    print("Contagiados a generar: " + str(contagiados_totales))
+    #print("Caminantes a generar: " + str(caminantes_a_generar))
+    #print("Contagiados a generar: " + str(contagiados_totales))
 
     probabilidad_caminante = proporcion_caminantes
     probabilidad_contagiado = proporcion_contagiados
@@ -112,17 +119,17 @@ def _generar_personas(region, cantidades, proporcion_contagiados, proporcion_cam
         se_mueve = rd.uniform(0, 1) <= probabilidad_caminante
         if (se_mueve):
             caminantes_generados += 1
-            if (caminantes_generados == caminantes_a_generar):
-                probabilidad_caminante = -1
-            elif ((caminantes_a_generar - caminantes_generados) == (cantidad_de_gente - k - 1)):
-                probabilidad_caminante = 1
+        if (caminantes_generados == caminantes_a_generar):
+            probabilidad_caminante = -1
+        elif ((caminantes_a_generar - caminantes_generados) == (cantidad_de_gente - k - 1)):
+            probabilidad_caminante = 1
         esta_contagiado = rd.uniform(0, 1) <= probabilidad_contagiado
         if (esta_contagiado):
             contagiados_generados += 1
-            if (contagiados_generados == contagiados_totales):
-                probabilidad_contagiado = -1
-            elif ((contagiados_totales - contagiados_generados) == (cantidad_de_gente - k - 1)):
-                probabilidad_contagiado = 1
+        if (contagiados_generados == contagiados_totales):
+            probabilidad_contagiado = -1
+        elif ((contagiados_totales - contagiados_generados) == (cantidad_de_gente - k - 1)):
+            probabilidad_contagiado = 1
         persona = _generar_persona_random(cantidades, esta_contagiado, se_mueve)
         i,j = _posicion_no_ocupada(region)
         lista_personas.append([persona, (i, j)])
@@ -138,7 +145,7 @@ def poblar_region(region, cantidad_de_gente, proporcion_caminantes):
     cantidad_B = int(cantidad_de_gente * 0.2)
     cupos_restantes -= (cantidad_A + cantidad_B)
     cantidades = {"A":cantidad_A, "B":cantidad_B, "C":cupos_restantes}
-    return _generar_personas(region, cantidades, 0.03, proporcion_caminantes)
+    return _generar_personas(region, cantidades, const_proporcion_contagiados, proporcion_caminantes)
 
 def posicion_es_valida(region, pos_x, pos_y):
     return (pos_x >= 0) and (pos_x < len(region)) and (pos_y >= 0) \
@@ -146,15 +153,15 @@ def posicion_es_valida(region, pos_x, pos_y):
 
 
 #Variables globales generales para la configuracion
-probabilidad_de_contagio = 0.65
-hay_recontagio = False
+#probabilidad_de_contagio = 0.65
+#hay_recontagio = False
 
 #funcion para contagiar a la gente cercana al contagiado, recibe el mapa (region) y posicion del contagiado
-def contagiar_cercanos(region, pos_persona_contagiada):
-    global probabilidad_de_contagio
-    global hay_recontagio
+def contagiar_cercanos(region, pos_persona_contagiada, probabilidad_de_contagio, hay_recontagio):
+    #global probabilidad_de_contagio
+    #global hay_recontagio
     k = -1
-    for i in range(-5, 6):
+    for i in range(-4, 5):
         if i < 1:
             k += 2
         else:
@@ -174,10 +181,10 @@ def actualizar_probabilidad_movimiento(region, posicion, persona):
     lim_j = len(region[0]) - 1
 
     if (posicion[0] == 0) or (posicion[0] == lim_i):
-        persona.prob_moverse_arriba = 1 - persona.prob_moverse_arriba
+        persona._prob_moverse_arriba = 1 - persona._prob_moverse_arriba
 
     if (posicion[1] == 0) or (posicion[1] == lim_j):
-        persona.prob_moverse_derecha = 1 - persona.prob_moverse_derecha
+        persona._prob_moverse_derecha = 1 - persona._prob_moverse_derecha
 
 def mover_persona(region, persona):
     anterior_pos = persona[1]
@@ -185,7 +192,7 @@ def mover_persona(region, persona):
 
     if rd.uniform(0, 1) < 0.5: #Se mueve horizontalmente
 
-        if (rd.uniform(0, 1) < persona[0].prob_moverse_derecha) and (posicion_es_valida(region, anterior_pos[0], anterior_pos[1] + 1)) \
+        if (rd.uniform(0, 1) < persona[0]._prob_moverse_derecha) and (posicion_es_valida(region, anterior_pos[0], anterior_pos[1] + 1)) \
             and (posicion_esta_libre(region, (anterior_pos[0], anterior_pos[1] + 1))):
 
             persona[1] = (anterior_pos[0], anterior_pos[1] + 1)
@@ -199,7 +206,7 @@ def mover_persona(region, persona):
 
     else: #Se mueve verticalmente
 
-        if (rd.uniform(0, 1) < persona[0].prob_moverse_arriba) and (posicion_es_valida(region, anterior_pos[0] - 1, anterior_pos[1])) \
+        if (rd.uniform(0, 1) < persona[0]._prob_moverse_arriba) and (posicion_es_valida(region, anterior_pos[0] - 1, anterior_pos[1])) \
             and (posicion_esta_libre(region, (anterior_pos[0] - 1, anterior_pos[1]))):
 
             persona[1] = (anterior_pos[0] - 1, anterior_pos[1])
@@ -213,7 +220,7 @@ def mover_persona(region, persona):
 
     if logro_moverse:
         region[persona[1][0]][persona[1][1]] = persona[0]
-        region[anterior_pos[0]][anterior_pos[1]] = None #Aca perdi a mi persona para siempre? O no vive en la matriz?
+        region[anterior_pos[0]][anterior_pos[1]] = None
 
     actualizar_probabilidad_movimiento(region, persona[1], persona[0])
 
@@ -238,28 +245,26 @@ def mostrar_region(region):
 #alfa: instantes de tiempo minimos para que una persona enferma empiece a tener chance de sanar en cada siguiente instante de tiempo
 #beta: probabilidad de sanar
 #T: instante de tiempo en el que la probabilidad de contagio se reduce un 15%
-def main(N, alfa, beta, T):
-    proporcion_caminantes = 1
+#proporcion_caminantes: proporcion de gente que se desplaza en la region
+def main(N, alfa, beta, T, proporcion_caminantes, hay_recontagio):
     region = generar_region() #Genero el array
     personas = poblar_region(region, N, proporcion_caminantes) #Me mete en la region las personitas generadas
-    instantes_de_tiempo = 5000
+    probabilidad_de_contagio = const_probabilidad_inicial_contagio
     #Las personas es una lista donde cada elemento es una lista con una persona y una tupla con las coordenadas
 
-    for i in range(instantes_de_tiempo):
+    for i in range(const_instantes_de_tiempo):
 
         mostrar_region(region)
 
+        if (i == T):
+            probabilidad_de_contagio = const_probabilidad_final_contagio
+
         for persona in personas:
-
             if persona[0].puede_contagiar():
-                contagiar_cercanos(region, persona[1])
-
+                contagiar_cercanos(region, persona[1], probabilidad_de_contagio, hay_recontagio)
             if persona[0].intentar_moverse(alfa, beta):
                 mover_persona(region, persona)
 
         tm.sleep(0.5)
 
-main(50, 5, 0.9, 1500)
-
-
-
+main(50, 5, 0.9, 1500, 1, True)
