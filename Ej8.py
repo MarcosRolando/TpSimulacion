@@ -359,7 +359,7 @@ class Simulacion:
     def simular_pandemia(self): #funcion principal
         #------------------------------------------------------------
         # set up figure and animation
-        plt.clf()
+        #plt.clf()
         fig = plt.figure()
         fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
         ax = fig.add_subplot(111, aspect='equal') #equal pone los ejes
@@ -388,7 +388,7 @@ class Simulacion:
             personas = plt.scatter(datos_personas[0], datos_personas[1], c=datos_personas[2], s=ms)
             return personas, rect
 
-        ani = animation.FuncAnimation(fig, animate, interval=10, blit=True, init_func=init)
+        ani = animation.FuncAnimation(fig, animate, interval=1, blit=True, init_func=init, frames=const_instantes_de_tiempo, repeat=False)
 
 
         # save the animation as an mp4.  This requires ffmpeg or mencoder to be
