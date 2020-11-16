@@ -221,23 +221,6 @@ def mover_persona(region, persona):
 
     actualizar_probabilidad_movimiento(region, persona[1], persona[0])
 
-
-def mostrar_region(region):
-    os.system('clear')
-
-    for i in range(len(region)):
-        for j in range(len(region[i])):
-
-            if region[i][j] is not None:
-                if region[i][j].puede_contagiar():
-                    print('C', end = '')
-                else:
-                    print('P', end = '')
-            else:
-                print(' ', end = '')
-
-        print('')
-
 def obtener_contagiados_y_sanos(lista_personas):
     contagiados = 0
     sanos = 0
@@ -364,19 +347,21 @@ class Simulacion:
         fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
         ax = fig.add_subplot(111, aspect='equal') #equal pone los ejes
 
+        personas = plt.scatter([], [])
+
         # rect es el marco de la region
         rect = plt.Rectangle([0, 0], 250, 250, ec='none', lw=1, fc='none')
         ax.add_patch(rect)
 
         def init():
-            nonlocal rect
+            nonlocal rect, personas
             datos_personas = self.datos_personas() #retorna tres listas, la primera tiene las posiciones de fila (x), la segunda las de columnas (y) y la tercera el estado
             personas = plt.scatter(datos_personas[0], datos_personas[1], c=datos_personas[2])
             rect.set_edgecolor('black')
             return personas, rect
 
         def animate(i):
-            nonlocal rect, ax, fig
+            nonlocal rect, ax, fig, personas
             self.siguiente_instante()
 
             ms = int(fig.dpi * 2 * 2 * fig.get_figwidth()
@@ -385,10 +370,11 @@ class Simulacion:
             # update pieces of the animation
             rect.set_edgecolor('black')
             datos_personas = self.datos_personas() #retorna tres listas, la primera tiene las posiciones de fila (x), la segunda las de columnas (y) y la tercera el estado
+            personas.remove() #esto es para que el video quede bien, sin superposicion de imagenes. basicamente borro el anterior scatterplot
             personas = plt.scatter(datos_personas[0], datos_personas[1], c=datos_personas[2], s=ms)
             return personas, rect
 
-        ani = animation.FuncAnimation(fig, animate, interval=1, blit=True, init_func=init, frames=const_instantes_de_tiempo, repeat=False)
+        ani = animation.FuncAnimation(fig, animate, interval=1, blit=True, init_func=init, frames=100, repeat=False)
 
 
         # save the animation as an mp4.  This requires ffmpeg or mencoder to be
@@ -396,11 +382,8 @@ class Simulacion:
         # the video can be embedded in html5.  You may need to adjust this for
         # your system: for more information, see
         # http://matplotlib.sourceforge.net/api/animation_api.html
-        #ani.save('particle_box.mp4', fps=30, extra_args=['-vcodec', 'libx264'])
-
-        plt.autoscale(enable=True)
-        plt.show()
-
+        ani.save('particle_box.mp4', fps=60)
+        generar_graficos(self.lista_instantes, self.lista_contagiados, self.lista_sanos)
 
 
 simu = Simulacion(50, 2000, 0.9, 1500, True, filas=250, columnas=250)
