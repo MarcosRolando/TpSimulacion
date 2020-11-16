@@ -2,13 +2,16 @@ import random as rd
 import math as mt
 import os
 import time as tm
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
+import numpy as np
 
 
 const_proporcion_contagiados = 0.03
 const_probabilidad_inicial_contagio = 0.65
 const_probabilidad_final_contagio = 0.15
 const_instantes_de_tiempo = 5000
-const_tamanio_matriz = 30
+const_tamanio_matriz = 250
 
 class Persona:
 
@@ -62,11 +65,11 @@ class Persona:
 
 
 #ver si agregamos parametros para generar poblacion random
-def generar_region():
+def generar_region(filas, columnas):
     region = []
-    for i in range(const_tamanio_matriz):
+    for i in range(filas):
         region.append([])
-        for j in range(const_tamanio_matriz):
+        for j in range(columnas):
             region[i].append(None)
     return region
 
@@ -104,9 +107,6 @@ def _generar_personas(region, cantidades, proporcion_contagiados, proporcion_cam
     cantidad_de_gente = cantidades["A"] + cantidades["B"] + cantidades["C"]
     caminantes_a_generar = int(cantidad_de_gente * proporcion_caminantes)
     contagiados_totales = int(cantidad_de_gente * proporcion_contagiados)
-
-    #print("Caminantes a generar: " + str(caminantes_a_generar))
-    #print("Contagiados a generar: " + str(contagiados_totales))
 
     probabilidad_caminante = proporcion_caminantes
     probabilidad_contagiado = proporcion_contagiados
@@ -147,14 +147,11 @@ def poblar_region(region, cantidad_de_gente, proporcion_caminantes):
     cantidades = {"A":cantidad_A, "B":cantidad_B, "C":cupos_restantes}
     return _generar_personas(region, cantidades, const_proporcion_contagiados, proporcion_caminantes)
 
+
 def posicion_es_valida(region, pos_x, pos_y):
     return (pos_x >= 0) and (pos_x < len(region)) and (pos_y >= 0) \
             and (pos_y < len(region[0]))
 
-
-#Variables globales generales para la configuracion
-#probabilidad_de_contagio = 0.65
-#hay_recontagio = False
 
 #funcion para contagiar a la gente cercana al contagiado, recibe el mapa (region) y posicion del contagiado
 def contagiar_cercanos(region, pos_persona_contagiada, probabilidad_de_contagio, hay_recontagio):
@@ -241,10 +238,36 @@ def mostrar_region(region):
 
         print('')
 
+def obtener_contagiados_y_sanos(lista_personas):
+    contagiados = 0
+    sanos = 0
+    for persona in lista_personas:
+        if (persona[0].puede_contagiar()):
+            contagiados += 1
+        else:
+            sanos += 1
+    return contagiados, sanos
+
+
+def generar_graficos(lista_instantes, lista_contagiados, lista_sanos):
+    plt.clf()
+    plt.plot(lista_instantes, lista_contagiados)
+    plt.xlabel("Tiempo")
+    plt.ylabel("Cantidad contagiados")
+    plt.title("Contagiados en funcion del tiempo")
+    plt.savefig("Contagiados en funcion del tiempo.png")
+    plt.clf()
+    plt.plot(lista_instantes, lista_sanos)
+    plt.xlabel("Tiempo")
+    plt.ylabel("Cantidad sanos")
+    plt.title("Sanos en funcion del tiempo")
+    plt.savefig("Sanos en funcion del tiempo.png")
+
+'''
 #N: cant de personas
 #alfa: instantes de tiempo minimos para que una persona enferma empiece a tener chance de sanar en cada siguiente instante de tiempo
 #beta: probabilidad de sanar
-#T: instante de tiempo en el que la probabilidad de contagio se reduce un 15%
+#T: instante de tiempo en el que la probabilidad de contagio se reduce a 15%
 #proporcion_caminantes: proporcion de gente que se desplaza en la region
 def main(N, alfa, beta, T, proporcion_caminantes, hay_recontagio):
     region = generar_region() #Genero el array
@@ -252,9 +275,14 @@ def main(N, alfa, beta, T, proporcion_caminantes, hay_recontagio):
     probabilidad_de_contagio = const_probabilidad_inicial_contagio
     #Las personas es una lista donde cada elemento es una lista con una persona y una tupla con las coordenadas
 
+    lista_instantes = []
+    lista_contagiados = []
+    lista_sanos = []
     for i in range(const_instantes_de_tiempo):
-
-        mostrar_region(region)
+        lista_instantes.append(i)
+        contagiados, sanos = obtener_contagiados_y_sanos(personas)
+        lista_contagiados.append(contagiados)
+        lista_sanos.append(sanos)
 
         if (i == T):
             probabilidad_de_contagio = const_probabilidad_final_contagio
@@ -265,6 +293,116 @@ def main(N, alfa, beta, T, proporcion_caminantes, hay_recontagio):
             if persona[0].intentar_moverse(alfa, beta):
                 mover_persona(region, persona)
 
-        tm.sleep(0.5)
 
-main(50, 5, 0.9, 1500, 1, True)
+    generar_graficos(lista_instantes, lista_contagiados, lista_sanos)
+
+main(2000, 15, 0.5, 3000, 1, True)
+'''
+
+
+
+
+class Simulacion:
+
+    def __init__(self, N, alfa, beta, T, hay_recontagio, filas, columnas):
+        self.proporcion_caminantes = 1
+        self.filas = filas
+        self.columnas = columnas
+        self.region = generar_region(filas, columnas) #Genero el array
+        self.personas = poblar_region(self.region, N, self.proporcion_caminantes) #Me mete en la region las personitas generadas
+        self.alfa = alfa
+        self.beta = beta
+        self.hay_recontagio = hay_recontagio
+        self.probabilidad_de_contagio = const_probabilidad_inicial_contagio
+        self.T = T
+        self.lista_instantes = []
+        self.lista_contagiados = []
+        self.lista_sanos = []
+        self.instantes_pasados = 0
+        #Las personas es una lista donde cada elemento es una lista con una persona y una tupla con las coordenadas
+
+    def datos_personas(self):
+        posicion_x = []
+        posicion_y = []
+        estado = []
+
+        for persona in self.personas:
+            posicion_y.append( (persona[1][0] + 0.5 - mt.floor(self.filas / 250)) / (self.filas / 250) ) #Centro las posiciones en 0 ya que asi se maneja el grafico
+            posicion_x.append( (persona[1][1] + 0.5 - mt.floor(self.columnas / 250)) / (self.columnas / 250) ) #Centro las posiciones en 0 ya que asi se maneja el grafico
+            if persona[0].puede_contagiar(): #el + 0.5 es solo para ajustar un poco la posicion para que no se solape con el rectangulo del dibujo
+                estado.append('red')
+            else:
+                estado.append('green')
+
+        return posicion_x, posicion_y, estado
+
+    def siguiente_instante(self):
+
+        self.lista_instantes.append(self.instantes_pasados)
+        contagiados, sanos = obtener_contagiados_y_sanos(self.personas)
+        self.lista_contagiados.append(contagiados)
+        self.lista_sanos.append(sanos)
+
+        if (self.instantes_pasados == self.T):
+            self.probabilidad_de_contagio = const_probabilidad_final_contagio
+
+        for persona in self.personas:
+
+            if persona[0].puede_contagiar():
+                contagiar_cercanos(self.region, persona[1], self.probabilidad_de_contagio, self.hay_recontagio)
+
+            if persona[0].intentar_moverse(self.alfa, self.beta):
+                mover_persona(self.region, persona)
+
+        self.instantes_pasados += 1
+
+    def simular_pandemia(self): #funcion principal
+        #------------------------------------------------------------
+        # set up figure and animation
+        plt.clf()
+        fig = plt.figure()
+        fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
+        ax = fig.add_subplot(111, aspect='equal') #equal pone los ejes
+
+        # rect es el marco de la region
+        rect = plt.Rectangle([0, 0], 250, 250, ec='none', lw=1, fc='none')
+        ax.add_patch(rect)
+
+        def init():
+            nonlocal rect
+            datos_personas = self.datos_personas() #retorna tres listas, la primera tiene las posiciones de fila (x), la segunda las de columnas (y) y la tercera el estado
+            personas = plt.scatter(datos_personas[0], datos_personas[1], c=datos_personas[2])
+            rect.set_edgecolor('black')
+            return personas, rect
+
+        def animate(i):
+            nonlocal rect, ax, fig
+            self.siguiente_instante()
+
+            ms = int(fig.dpi * 2 * 2 * fig.get_figwidth()
+                     / np.diff(ax.get_xbound())[0])
+
+            # update pieces of the animation
+            rect.set_edgecolor('black')
+            datos_personas = self.datos_personas() #retorna tres listas, la primera tiene las posiciones de fila (x), la segunda las de columnas (y) y la tercera el estado
+            personas = plt.scatter(datos_personas[0], datos_personas[1], c=datos_personas[2], s=ms)
+            return personas, rect
+
+        ani = animation.FuncAnimation(fig, animate, interval=10, blit=True, init_func=init)
+
+
+        # save the animation as an mp4.  This requires ffmpeg or mencoder to be
+        # installed.  The extra_args ensure that the x264 codec is used, so that
+        # the video can be embedded in html5.  You may need to adjust this for
+        # your system: for more information, see
+        # http://matplotlib.sourceforge.net/api/animation_api.html
+        #ani.save('particle_box.mp4', fps=30, extra_args=['-vcodec', 'libx264'])
+
+        plt.autoscale(enable=True)
+        plt.show()
+
+
+
+simu = Simulacion(50, 2000, 0.9, 1500, True, filas=250, columnas=250)
+simu.simular_pandemia()
+
