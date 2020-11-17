@@ -345,7 +345,7 @@ class Simulacion:
         # the video can be embedded in html5.  You may need to adjust this for
         # your system: for more information, see
         # http://matplotlib.sourceforge.net/api/animation_api.html
-        ani.save('particle_box.mp4', fps=60)
+        ani.save('simu.mp4', fps=60)
         generar_graficos(self.lista_instantes, self.lista_contagiados, self.lista_sanos)
 
 
