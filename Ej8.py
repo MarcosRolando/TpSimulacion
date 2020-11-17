@@ -233,7 +233,8 @@ def obtener_contagiados_y_sanos(lista_personas):
 
 
 def generar_graficos(lista_instantes, lista_contagiados, lista_sanos):
-    plt.clf()
+    plt.close()
+    #plt.clf()
     plt.plot(lista_instantes, lista_contagiados)
     plt.xlabel("Tiempo")
     plt.ylabel("Cantidad contagiados")
@@ -245,44 +246,6 @@ def generar_graficos(lista_instantes, lista_contagiados, lista_sanos):
     plt.ylabel("Cantidad sanos")
     plt.title("Sanos en funcion del tiempo")
     plt.savefig("Sanos en funcion del tiempo.png")
-
-'''
-#N: cant de personas
-#alfa: instantes de tiempo minimos para que una persona enferma empiece a tener chance de sanar en cada siguiente instante de tiempo
-#beta: probabilidad de sanar
-#T: instante de tiempo en el que la probabilidad de contagio se reduce a 15%
-#proporcion_caminantes: proporcion de gente que se desplaza en la region
-def main(N, alfa, beta, T, proporcion_caminantes, hay_recontagio):
-    region = generar_region() #Genero el array
-    personas = poblar_region(region, N, proporcion_caminantes) #Me mete en la region las personitas generadas
-    probabilidad_de_contagio = const_probabilidad_inicial_contagio
-    #Las personas es una lista donde cada elemento es una lista con una persona y una tupla con las coordenadas
-
-    lista_instantes = []
-    lista_contagiados = []
-    lista_sanos = []
-    for i in range(const_instantes_de_tiempo):
-        lista_instantes.append(i)
-        contagiados, sanos = obtener_contagiados_y_sanos(personas)
-        lista_contagiados.append(contagiados)
-        lista_sanos.append(sanos)
-
-        if (i == T):
-            probabilidad_de_contagio = const_probabilidad_final_contagio
-
-        for persona in personas:
-            if persona[0].puede_contagiar():
-                contagiar_cercanos(region, persona[1], probabilidad_de_contagio, hay_recontagio)
-            if persona[0].intentar_moverse(alfa, beta):
-                mover_persona(region, persona)
-
-
-    generar_graficos(lista_instantes, lista_contagiados, lista_sanos)
-
-main(2000, 15, 0.5, 3000, 1, True)
-'''
-
-
 
 
 class Simulacion:
@@ -374,7 +337,7 @@ class Simulacion:
             personas = plt.scatter(datos_personas[0], datos_personas[1], c=datos_personas[2], s=ms)
             return personas, rect
 
-        ani = animation.FuncAnimation(fig, animate, interval=1, blit=True, init_func=init, frames=100, repeat=False)
+        ani = animation.FuncAnimation(fig, animate, interval=1, blit=True, init_func=init, frames=const_instantes_de_tiempo, repeat=False)
 
 
         # save the animation as an mp4.  This requires ffmpeg or mencoder to be
@@ -386,6 +349,6 @@ class Simulacion:
         generar_graficos(self.lista_instantes, self.lista_contagiados, self.lista_sanos)
 
 
-simu = Simulacion(50, 2000, 0.9, 1500, True, filas=250, columnas=250)
+simu = Simulacion(200, 2000, 0.9, 1500, True, filas=250, columnas=250)
 simu.simular_pandemia()
 
