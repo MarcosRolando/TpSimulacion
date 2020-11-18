@@ -5,6 +5,7 @@ import time as tm
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import numpy as np
+import sys
 
 
 const_proporcion_contagiados = 0.03
@@ -140,6 +141,11 @@ def _generar_personas(region, cantidades, proporcion_contagiados, proporcion_cam
 #Genera personas en la matriz con las proporciones pedidas por el enunciado
 # 10 <= cantidad_de_gente <= 250 * 250 para que funcionen bien las proporciones
 def poblar_region(region, cantidad_de_gente, proporcion_caminantes):
+
+    if cantidad_de_gente > (len(region) * len(region[0])):
+        print('Error: mas cantidad de gente que tamanio disponible')
+        sys.exit()
+
     cupos_restantes = cantidad_de_gente
     cantidad_A = int(cantidad_de_gente * 0.7)
     cantidad_B = int(cantidad_de_gente * 0.2)
@@ -234,7 +240,6 @@ def obtener_contagiados_y_sanos(lista_personas):
 
 def generar_graficos(lista_instantes, lista_contagiados, lista_sanos):
     plt.close()
-    #plt.clf()
     plt.plot(lista_instantes, lista_contagiados)
     plt.xlabel("Tiempo")
     plt.ylabel("Cantidad contagiados")
@@ -250,8 +255,8 @@ def generar_graficos(lista_instantes, lista_contagiados, lista_sanos):
 
 class Simulacion:
 
-    def __init__(self, N, alfa, beta, T, hay_recontagio, filas, columnas):
-        self.proporcion_caminantes = 1
+    def __init__(self, N, alfa, beta, T, hay_recontagio, proporcion_caminantes, filas, columnas):
+        self.proporcion_caminantes = proporcion_caminantes
         self.filas = filas
         self.columnas = columnas
         self.region = generar_region(filas, columnas) #Genero el array
@@ -330,25 +335,23 @@ class Simulacion:
             ms = int(fig.dpi * 2 * 2 * fig.get_figwidth()
                      / np.diff(ax.get_xbound())[0])
 
-            # update pieces of the animation
             rect.set_edgecolor('black')
             datos_personas = self.datos_personas() #retorna tres listas, la primera tiene las posiciones de fila (x), la segunda las de columnas (y) y la tercera el estado
             personas.remove() #esto es para que el video quede bien, sin superposicion de imagenes. basicamente borro el anterior scatterplot
             personas = plt.scatter(datos_personas[0], datos_personas[1], c=datos_personas[2], s=ms)
+
             return personas, rect
 
         ani = animation.FuncAnimation(fig, animate, interval=1, blit=True, init_func=init, frames=const_instantes_de_tiempo, repeat=False)
 
-
-        # save the animation as an mp4.  This requires ffmpeg or mencoder to be
-        # installed.  The extra_args ensure that the x264 codec is used, so that
-        # the video can be embedded in html5.  You may need to adjust this for
-        # your system: for more information, see
-        # http://matplotlib.sourceforge.net/api/animation_api.html
         ani.save('simu.mp4', fps=60)
         generar_graficos(self.lista_instantes, self.lista_contagiados, self.lista_sanos)
 
 
-simu = Simulacion(200, 2000, 0.9, 1500, True, filas=250, columnas=250)
+#N: cant de personas
+#alfa: instantes de tiempo minimos para que una persona enferma empiece a tener chance de sanar en cada siguiente instante de tiempo
+#beta: probabilidad de sanar
+#T: instante de tiempo en el que la probabilidad de contagio se reduce un 15%
+simu = Simulacion(1000, 50, 0.5, 1000, False, 1, filas=const_tamanio_matriz, columnas=const_tamanio_matriz)
 simu.simular_pandemia()
 
